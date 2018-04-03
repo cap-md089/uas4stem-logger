@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html style="width:100%;height:100%;padding:0;margin:0">
+    <head>
+         <script src="tracking-min.js"></script>
+        <script src="jquery-2.1.4.min.js"></script> 
+    </head>
+
+    <body style="width:100%;height:100%;padding:0;margin:0;">
+        <div id="battLog" style="width:25%;height:95%;border:1px solid black;padding:5px;box-sizing:border-box;margin:2.4999%;float:left"></div>
+        <div id="coordstuff" style="width:70%;height:100%;float:left">
+            <div id="cameracalc" style="margin: 10px; margin-bottom: 5px">
+                <p style="margin-bottom: 0">Altitude (meters): <input id="cameracalci" type="text" value="25" /></p>
+                <div id="cameracalco" style="margin: 5px 0;">Width: 0m; Depth: 0m; Area: 0m<sup>2</sup></div>
+            </div>
+            <div id="cameraopts" style="margin: 10px; margin-bottom: 5px">Width: 0m; Depth: 0m; Area: 0m<sup>2</sup></div>
+            <div id="batteryId" style="margin:10px;margin-bottom:5px">
+                <span>Battery being used: </span>
+                <select id="batteryIdSel">
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                </select>
+            </div>
+            <div id="buttons">
+                <button onclick="startRecording();" style="margin:10px;margin-bottom:5px;" id="start">Start</button>
+                <button onclick="stopRecording();" style="margin:10px;margin-bottom:5px;" id="stop" disabled>Stop</button>
+                <button onclick="save();" style="margin: 10px;margin-bottom:5px">Save</button>
+            </div>
+            <div id="coordoutput" style="margin:10px;margin-bottom:5px;">&nbsp;</div>
+            <div id="coorddesc" style="margin:5px 10px;">
+                <input id="coorddescinput" type="text" placeholder="Description of target" />
+            </div>
+            <div style="margin:10px;margin-top:5px;overflow:auto">
+                <p style="margin-bottom:1px">File to store data</p>
+                <input id="fileLoc" style="float:left;clear:both" />
+            </div>
+            <div id="imgtrackstatus" style="margin:10px;margin-top:5px;overflow:auto"></div>
+            <canvas id="imgtrack" width="330" height="186.5"></canvas>
+            <div id="timeleft" style="margin:10px;clear:both;">
+                <p style="margin:0px">Time in air: 0:00</p>
+                <p style="margin:0px">Time left: 8:00</p>
+                <p style="margin:0px">Time required to land: 0:00</p>
+            </div>
+            <div id="console" style="margin:10px;box-sizing:border-box;padding:5px;border:1px solid black"></div>
+        </div>
+        <script src="server.js"></script>
+    </body>
+</html>

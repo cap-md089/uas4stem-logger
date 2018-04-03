@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <script>
+    CanvasRenderingContext2D.prototype.wrapText = function (text, x, y, maxWidth, lineHeight) {
+
+  var lines = text.split("\n");
+
+  for (var i = 0; i < lines.length; i++) {
+
+      var words = lines[i].split(' ');
+      var line = '';
+
+      for (var n = 0; n < words.length; n++) {
+          var testLine = line + words[n] + ' ';
+          var metrics = this.measureText(testLine);
+          var testWidth = metrics.width;
+          if (testWidth > maxWidth && n > 0) {
+              this.fillText(line, x, y);
+              line = words[n] + ' ';
+              y += lineHeight;
+          }
+          else {
+              line = testLine;
+          }
+      }
+
+      this.fillText(line, x, y);
+      y += lineHeight;
+  }
+}
+
+      window.onload = function () {
+        var canvas = document.getElementById("mycanvas");
+        var context = canvas.getContext("2d");
+
+        width = 150;
+        height = 150;
+        
+        canvas.width = width;
+        canvas.height = height;
+
+        with (context) {
+            textBaseline = "top";
+            textAlign = "center";
+
+            
+
+            fillStyle = "white";
+            fillRect(0,0,width,height);
+
+            fillStyle = "red";
+            fillRect(15, 15, 120, 120);
+
+            fillStyle = "white";
+            fillRect(30, 30, 90, 90);
+
+            fillStyle = "red";
+            textBaseline = "middle";
+            textAlign = "center";
+            font = "70px sans-serif"
+            fillText("H", 75, 75);
+        }
+
+        var img = document.getElementById("save");
+        //img.height = height;
+        //img.src = canvas.toDataURL("jpg");
+        img.href = canvas.toDataURL("jpg");
+        img.click();
+        //img.width = width;
+      }
+    </script>
+  </head>
+
+  <body>
+    <canvas style="display:none" id="mycanvas"></canvas>
+    <a id="save"></a>
+  </body>
+</html>
