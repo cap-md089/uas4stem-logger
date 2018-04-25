@@ -1,14 +1,18 @@
 {
   "name": "uasteamlogger",
   "main": "main.js",
-  "version" : "3.5.0",
-  "window" : {
-      "width": 1600,
-      "height": 900,
-      "toolbar": true,
-      "title" : "UAS Team Logger"
+  "version": "3.5.0",
+  "window": {
+    "width": 1600,
+    "height": 900,
+    "toolbar": true,
+    "title": "UAS Team Logger"
   },
-  "dependencies" : {
-    "utm-latlng" : "^1.0.3"
+  "dependencies": {
+    "electron": "^1.8.4",
+    "utm-latlng": "^1.0.3"
+  },
+  "scripts": {
+    "start": "electron ."
   }
 }

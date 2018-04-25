@@ -8,6 +8,38 @@ const $ = require("./jquery-2.1.4.min.js");
 
 const electron = require("electron");
 
+window.columnHeads = [
+    "timeInAir",
+    "lat",
+    "lng",
+    "armed",
+    "battery_voltage",
+    "alt",
+    "battery_remaining",
+    "groundspeed",
+    "throttle",
+    "dth",
+    "vertspeed",
+    "rtlspeed",
+    "rtllandspeed",
+    "roll",
+    "yaw",
+    "pitch",
+    "timeRequired"
+];
+
+function parseCSV (csv) {
+    let results = csv.split(',');
+    let result = {};
+    for (let i in results) {
+        result[window.columnHeads[i]] = results[i];
+        if (i == 3) { result.armed = result.armed == 'true'; }
+        else { result[window.columnHeads[i]] = parseFloat(results[i]); }
+    }
+    return result;
+}
+
+
 window.start = Math.round(Date.now()/1000);
 window.flights = 0;
 window.cs = {
@@ -57,11 +89,11 @@ $("#fileLoc").val(process.cwd()+"\\UASFlightInfo.json");
 window.server = net.createServer((socket) => {
     window.cs.lastUpdate = Date.now();
     socket.on("data", (data) => {
+        data = data.toString();
         try {
             data = data.toString();
-            data = data.split('}{');
-            data = data.length == 1 ? data[0] : '{'+data[data.length-1];
-            ncs = JSON.parse(data);
+            data = data.split('\n');
+            ncs = parseCSV(data[0]);
             $("#flying").html(((parseFloat(ncs.throttle) > 12 ? 8 : 0) | (parseFloat(ncs.groundspeed) > 3 ? 4 : 0) | (ncs.armed.toString().toLowerCase() == 'true' ? 2 : 0) | (!window.flying ? 1 : 0)).toString());
             $("#flying").append(parseFloat(ncs.throttle)+', '+parseFloat(ncs.groundspeed)+', '+ncs.armed.toString().toLowerCase()+', '+window.flying?'flying' : 'not flying');
             if ((parseFloat(ncs.throttle) > 12 || parseFloat(ncs.groundspeed) > 3) && ncs.armed.toString().toLowerCase() == 'true' && !window.flying) {
@@ -144,9 +176,11 @@ window.server = net.createServer((socket) => {
                 socket.write("");
             }*/
         } catch (e) {
-            error(e.toString());
+            error(e.stack);
         }
         
+        $("#currentcoords").html(`${window.cs.lat.toFixed(6)}, ${window.cs.lng.toFixed(6)}`);
+
         if (flying) {
             update();
         }
@@ -209,13 +243,18 @@ var update = function () {
     if (UAS.recordingCoords) {
         // offsetx = -window.cs.offsetx;
         // offsety = -window.cs.offsety;
-        var coordinates = utmObj.convertLatLngToUtm(window.cs.lat, window.cs.lng);
-        coordinates.Easting += offsetx;
-        coordinates.Northing += ofssety;
-        var coordinates = utmObj.convertUtmToLatLng(coordinates.Easting, coordinates.Northing, coordinates.ZoneNumber, coordinates.ZoneLetter);
+        // var coordinates = utmObj.convertLatLngToUtm(window.cs.lat, window.cs.lng);
+        // coordinates.Easting += offsetx;
+        // coordinates.Northing += ofssety;
+        // var coordinates = utmObj.convertUtmToLatLng(coordinates.Easting, coordinates.Northing, coordinates.ZoneNumber, coordinates.ZoneLetter);
 
-        UAS.rlats.push(coordinates.lat);
-        UAS.rlongs.push(coordinates.lang);
+        // UAS.rlats.push(coordinates.lat);
+        // UAS.rlongs.push(coordinates.lang);
+        
+        console.log(window.cs.lat, window.cs.lng);
+
+        UAS.rlats.push(window.cs.lat);
+        UAS.rlongs.push(window.cs.lng);
     }
 
     var cameraWidth = 2 * 1.04891304331  * window.cs.alt;
@@ -333,83 +372,4 @@ loop();
 
 function timeSpentInAir () {
     return Math.round(Date.now()/1000) - start - UAS.batteryTimer;
-}
-
-window.cs.alt = 25;
-window.cs.pitch = 10;
-
-var canvas = document.getElementById("imgtrack");
-var context = canvas.getContext('2d');
-
-var cwidth = canvas.width;
-var cheight = canvas.height;
-
-console.log(tracking);
-tracking.Fast.THRESHOLD = 40;
-
-with (context) {
-    clearRect(0, 0, cwidth, cheight)
-
-    img = new Image();
-
-    img.src = "render2.png";
-
-    img.onload = function () {
-        drawImage(this, 0, 0, cwidth, cheight);
-        var corners = tracking.Fast.findCorners(
-            tracking.Image.grayscale(
-                getImageData(0, 0, cwidth, cheight).data,
-            cwidth, cheight),
-        cwidth, cheight);
-
-        var ax = [];
-        var ay = [];
-
-        strokeStyle = '#f00';
-        for (var i = 0; i < corners.length; i+= 2) {
-            strokeRect(corners[i]-1, corners[i + 1]-1, 3, 3);
-            ax.push(corners[i]);
-            ay.push(corners[i+1]);
-        }
-
-        var center = [
-            average(ax),
-            average(ay)
-        ];
-        
-        strokeStyle = '#f80';
-        strokeWeight = '2px';
-
-        beginPath();
-        moveTo(cwidth/2, 0);
-        lineTo(cwidth/2, cheight);
-        stroke();
-
-        beginPath();
-        moveTo(0, cheight/2);
-        lineTo(cwidth, cheight/2);
-        stroke();
-
-        beginPath();
-        ellipse(cwidth/2, cheight/2, 15, 15, 0, 0, 2 * Math.PI);
-        stroke();
-
-        strokeStyle = '#00f';
-        beginPath();
-        ellipse(center[0], center[1], 5, 5, 0, 0, 2 * Math.PI);
-        stroke();
-        font = '8px monospace';
-        fillStyle = '#000';
-        console.log(center);
-        console.log("Offset: "+(center[0]-cwidth/2).toFixed(1)+", "+(center[1]-cheight/2).toFixed(1));
-
-        var offsetx = map(center[0]-cwidth/2, 0, cwidth/2, 0, UAS.cameraWidth);
-        var offsety = map(center[1]-cheight/2, 0, cheight/2, 0, UAS.cameraDepth);
-
-        console.log(offsetx, offsety);
-
-        $("#imgtrackstatus").html("Offset: "+(center[0]-cwidth/2).toFixed(1)+"px, "+(center[1]-cheight/2).toFixed(1)+"px<br />" +
-        (center[0] != 0 && center[1] != 0 ? 'Target acquired<br />' : '') +
-        "Offset: "+(offsetx).toFixed(1)+"m, "+(offsety).toFixed(1)+"m");
-    }
 }

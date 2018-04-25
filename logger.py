@@ -15,8 +15,8 @@ sys.path.extend([
 
 sys.path = list(set(sys.path))
 
-import json
-print "JSON imported"
+# import json
+# print "JSON imported"
 import socket
 print "Socket imported"
 # import mathutils
@@ -47,32 +47,47 @@ while True :
     #     mathutils.Vector((0, 0, 1))
     # )
 
-    print Script.GetParam("WPNAV_SPEED")
-    print Script.GetParam("LAND_SPEED")
-
-
-    jsond = json.dumps({
-        "timeInAir":str(cs.timeInAir),
-        "lat":str(cs.lat),
-        "lng":str(cs.lng),
-        "armed":"true" if cs.armed else "false",
-        "battery_voltage":str(cs.battery_voltage),
-        "alt":str(cs.alt),
-        "battery_remaining":str(cs.battery_remaining),
-        "groundspeed":str(cs.groundspeed),
-        "throttle":str(cs.ch3percent),
-        "dth":str(cs.DistToHome),
-        "vertspeed":str(cs.verticalspeed),
-        "rtlspeed":str(Script.GetParam('WPNAV_SPEED')/100),
-        "rtllandspeed":str(((float(Script.GetParam('LAND_SPEED'))+float(Script.GetParam('LAND_SPEED_HIGH'))+float(Script.GetParam("LAND_SPEED_HIGH")))/3)/100),
-        "roll":str(cs.roll),
-        "yaw":str(cs.yaw),
-        "pitch":str(cs.pitch),
-        # "offsetX":str(offset[0]),
-        # "offsetY":str(offset[1]),
-        "timeRequired":str(cs.DistToHome / (Script.GetParam('WPNAV_SPEED')/100) + 20 + (((cs.alt - 10) / Script.GetParam('LAND_SPEED')) if cs.alt > 10 else 0) + (10 if cs.alt > 10 else cs.alt) / Script.GetParam('LAND_SPEED'))
-    })
-    data = mysock.send(jsond)
+    # jsond = json.dumps({
+    #     "timeInAir":str(cs.timeInAir),
+    #     "lat":str(cs.lat),
+    #     "lng":str(cs.lng),
+    #     "armed":"true" if cs.armed else "false",
+    #     "battery_voltage":str(cs.battery_voltage),
+    #     "alt":str(cs.alt),
+    #     "battery_remaining":str(cs.battery_remaining),
+    #     "groundspeed":str(cs.groundspeed),
+    #     "throttle":str(cs.ch3percent),
+    #     "dth":str(cs.DistToHome),
+    #     "vertspeed":str(cs.verticalspeed),
+    #     "rtlspeed":str(Script.GetParam('WPNAV_SPEED')/100),
+    #     "rtllandspeed":str(((float(Script.GetParam('LAND_SPEED'))+float(Script.GetParam('LAND_SPEED_HIGH'))+float(Script.GetParam("LAND_SPEED_HIGH")))/3)/100),
+    #     "roll":str(cs.roll),
+    #     "yaw":str(cs.yaw),
+    #     "pitch":str(cs.pitch),
+    #     # "offsetX":str(offset[0]),
+    #     # "offsetY":str(offset[1]),
+    #     "timeRequired":str(cs.DistToHome / (Script.GetParam('WPNAV_SPEED')/100) + 20 + (((cs.alt - 10) / Script.GetParam('LAND_SPEED')) if cs.alt > 10 else 0) + (10 if cs.alt > 10 else cs.alt) / Script.GetParam('LAND_SPEED'))
+    # })
+    csv = ','.join([
+        str(cs.timeInAir),
+        str(cs.lat),
+        str(cs.lng),
+        "true" if cs.armed else "false",
+        str(cs.battery_voltage),
+        str(cs.alt),
+        str(cs.battery_remaining),
+        str(cs.groundspeed),
+        str(cs.ch3percent),
+        str(cs.DistToHome),
+        str(cs.verticalspeed),
+        str(Script.GetParam('WPNAV_SPEED')/100),
+        str(((float(Script.GetParam('LAND_SPEED'))+float(Script.GetParam('LAND_SPEED_HIGH'))+float(Script.GetParam("LAND_SPEED_HIGH")))/3)/100),
+        str(cs.roll),
+        str(cs.yaw),
+        str(cs.pitch),
+        str(cs.DistToHome / (Script.GetParam('WPNAV_SPEED')/100) + 20 + (((cs.alt - 10) / Script.GetParam('LAND_SPEED')) if cs.alt > 10 else 0) + (10 if cs.alt > 10 else cs.alt) / Script.GetParam('LAND_SPEED'))
+    ]) + '\n'
+    data = mysock.send(csv)
     if data == 0 :
         print "Packet failed to send"
     
