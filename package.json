@@ -9,6 +9,7 @@
     "title": "UAS Team Logger"
   },
   "dependencies": {
+    "@types/node": "^8.10.10",
     "electron": "^1.8.4",
     "utm-latlng": "^1.0.3"
   },

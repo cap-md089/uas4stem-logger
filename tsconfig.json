@@ -1,7 +1,6 @@
 {
     "compilerOptions": {
         "target": "es5",
-        "module": "commonjs",
         "allowUnreachableCode": false,
         "allowUnusedLabels": false,
         "alwaysStrict": true,
@@ -9,6 +8,12 @@
         "noUnusedLocals": true,
         "pretty": false,
         "removeComments": true,
+        "lib": [
+            "dom",
+            "es2015",
+            "es5",
+            "es6"
+        ]
     },
     "exclude": [
         "node_modules"

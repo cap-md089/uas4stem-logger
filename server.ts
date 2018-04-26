@@ -1,5 +1,5 @@
-const net = require('net');
-const fs = require('fs');
+import * as net from 'net';
+import * as fs from 'fs';
 
 // const utm = require('utm-latlng');
 // const utmObj = new utm();
@@ -124,6 +124,14 @@ class UASSession {
 
 	public static queue: number[][] = [];
 
+	public static connection: {
+		packets: number,
+		start: number
+	} = {
+		packets: 0,
+		start: 0
+	};
+
 	public static getCameraValues (altitude: number): {
 		width: number;
 		depth: number;
@@ -149,13 +157,15 @@ class UASSession {
 
 $('#fileLoc').val(process.cwd() + '\\UASFlightInfo.json');
 
-const server = net.createServer((socket) => {
-	socket.on('data', (data) => {
-		data = data.toString();
+net.createServer((socket: net.Socket) => {
+	UASSession.connection.start = Date.now() / 1000;
+	socket.on('data', buff => {
+		UASSession.connection.packets += 1;
+		let data = buff.toString();
 		try {
 			data = data.toString();
-			data = data.split('\n');
-			let ncs: CurrentState = parseCSV(data[0]);
+			let bestData = data.split('\n');
+			let ncs: CurrentState = parseCSV(bestData[0]);
 			if (
 				(ncs.throttle > 12 || ncs.groundspeed > 3) &&
 				ncs.armed &&
@@ -194,6 +204,11 @@ const server = net.createServer((socket) => {
 		}
 		
 		$('#currentcoords').html(`${currentState.lat.toFixed(6)}, ${currentState.lng.toFixed(6)}`);
+		$("#connection").html(
+			'Connection speed: ' +
+			(UASSession.connection.packets / (Date.now() / 1000 - UASSession.connection.start)).toFixed(0) +
+			' packet/s'
+		);
 
 		if (UASSession.flying) {
 			update();
@@ -202,9 +217,14 @@ const server = net.createServer((socket) => {
 	log('Connection');
 }).listen(54248, '127.0.0.1');
 
-function map (i: number, a: number, b: number, c: number, d: number) {
-	return c + (d - c) * ((i - a) / (b - a));
-}
+let listeningSockets: net.Socket[] = [];
+net.createServer((socket: net.Socket) => {
+	listeningSockets.push(socket);
+}).listen(1337, '127.0.0.1');
+
+// function map (i: number, a: number, b: number, c: number, d: number) {
+// 	return c + (d - c) * ((i - a) / (b - a));
+// }
 
 var log = function (text: string) {
 	$('#console').append(text + '<br />');    
@@ -252,11 +272,11 @@ $('#cameracalci').on('keydown keyup', function () {
 	);
 }
 
-var mtan = function (v: number): number {
-	return Math.tan(v * (Math.PI / 180));
-};
+// var mtan = function (v: number): number {
+// 	return Math.tan(v * (Math.PI / 180));
+// };
 
-var update = function () {
+function update () {
 	if (Math.round(Date.now() / 1000) - start - UASSession.voltageTimer >= 20) {
 		UASSession.voltageTimer = Math.round(Date.now() / 1000) - start;
 		UASSession.volts.push(currentState.batteryVoltage);
@@ -312,7 +332,7 @@ var update = function () {
 	);
 };
 
-var save = function (file?: string) {
+function save (file?: string) {
 	file = file || $('#fileLoc').val() || UASSession.fileLocation;
 	let sessions: {
 		[key: string]: {
@@ -346,11 +366,13 @@ var save = function (file?: string) {
 		} else if (err1) {
 			throw err1;
 		} else  {
-			fs.readFile(file, (err, data) => {
+			fs.readFile(file, (err, buff) => {
+				let data: string;
 				if (err) {
 					warn('Cannot read file');
 					data = '';
 				}
+				data = buff.toString();
 				if (data === '') {
 					data = '{}';
 				}
@@ -376,14 +398,14 @@ var save = function (file?: string) {
 	});
 };
 
-var startRecording = function () {
+function startRecording () {
 	$('#start').prop('disabled', true);
 	$('#stop').prop('disabled', false);
 	$('#coordoutput').text('Recording coordinates...');
 	UASSession.recordingCoords = true;
 };
 
-var stopRecording = function () {
+function stopRecording () {
 	$('#start').prop('disabled', false);
 	$('#stop').prop('disabled', true);
 	UASSession.recordingCoords = false;
@@ -407,7 +429,7 @@ var stopRecording = function () {
 	save();
 };
 
-var average = function (arr: number[]): number {
+function average (arr: number[]): number {
 	if (arr.length === 0) {
 		return 0;
 	}
@@ -420,11 +442,10 @@ var average = function (arr: number[]): number {
 
 $(window).on('close', save);
 
-// tslint:disable-next-line:no-any
-function sendRC (a: any, b: any, c: any) {
-	UASSession.queue.push([a, b, c]);
+function sendRC (...data) {
+	listeningSockets.forEach(sock => sock.write(new Buffer(data)));
 }
 
-function timeSpentInAir () {
-	return Math.round(Date.now() / 1000) - start - UASSession.batteryTimer;
-}
+// function timeSpentInAir () {
+// 	return Math.round(Date.now() / 1000) - start - UASSession.batteryTimer;
+// }

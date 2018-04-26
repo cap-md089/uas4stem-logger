@@ -25,13 +25,42 @@ print "Socket imported"
 # print "Geometry imported"
 import math
 print "Math imported"
+import thread
+print "Threads imported"
 
 print "Running"
 
-mysock = socket.socket()
-mysock.connect(('127.0.0.1', 54248))
+sending = socket.socket()
+sending.connect(('127.0.0.1', 54248))
+receiving = socket.socket()
+receiving.connect(('127.0.0.1', 1337))
 
 print "Connected"
+
+def buffer (string) :
+    ret = []
+    for i in string :
+        ret.append(ord(i))
+    return ret
+
+def receiveCommand (socket) :
+    while True :
+        returnValue = socket.recv(4096)
+        data = buffer(returnValue)
+        func = data[0]
+
+        print "Received command: ",
+        print data
+
+        if func == 1 :
+            servo = data[1]
+            position = data[2] * 1000
+            MAV.doCommand(MAV.MAV_CMD.DO_SET_SERVO, servo, position, 0, 0, 0, 0, 0)
+
+try :
+    thread.start_new_thread(receiveCommand, tuple([receiving]))
+except Exception as e :
+    print "Thread error: {0}".format(e)
 
 while True :
     # uav_loc = mathutils.Matrix.Translation((0,0,25))
@@ -47,27 +76,6 @@ while True :
     #     mathutils.Vector((0, 0, 1))
     # )
 
-    # jsond = json.dumps({
-    #     "timeInAir":str(cs.timeInAir),
-    #     "lat":str(cs.lat),
-    #     "lng":str(cs.lng),
-    #     "armed":"true" if cs.armed else "false",
-    #     "battery_voltage":str(cs.battery_voltage),
-    #     "alt":str(cs.alt),
-    #     "battery_remaining":str(cs.battery_remaining),
-    #     "groundspeed":str(cs.groundspeed),
-    #     "throttle":str(cs.ch3percent),
-    #     "dth":str(cs.DistToHome),
-    #     "vertspeed":str(cs.verticalspeed),
-    #     "rtlspeed":str(Script.GetParam('WPNAV_SPEED')/100),
-    #     "rtllandspeed":str(((float(Script.GetParam('LAND_SPEED'))+float(Script.GetParam('LAND_SPEED_HIGH'))+float(Script.GetParam("LAND_SPEED_HIGH")))/3)/100),
-    #     "roll":str(cs.roll),
-    #     "yaw":str(cs.yaw),
-    #     "pitch":str(cs.pitch),
-    #     # "offsetX":str(offset[0]),
-    #     # "offsetY":str(offset[1]),
-    #     "timeRequired":str(cs.DistToHome / (Script.GetParam('WPNAV_SPEED')/100) + 20 + (((cs.alt - 10) / Script.GetParam('LAND_SPEED')) if cs.alt > 10 else 0) + (10 if cs.alt > 10 else cs.alt) / Script.GetParam('LAND_SPEED'))
-    # })
     csv = ','.join([
         str(cs.timeInAir),
         str(cs.lat),
@@ -87,8 +95,9 @@ while True :
         str(cs.pitch),
         str(cs.DistToHome / (Script.GetParam('WPNAV_SPEED')/100) + 20 + (((cs.alt - 10) / Script.GetParam('LAND_SPEED')) if cs.alt > 10 else 0) + (10 if cs.alt > 10 else cs.alt) / Script.GetParam('LAND_SPEED'))
     ]) + '\n'
-    data = mysock.send(csv)
+    data = sending.send(csv)
     if data == 0 :
         print "Packet failed to send"
+
     
 print "Done"

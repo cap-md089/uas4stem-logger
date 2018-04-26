@@ -1,6 +1,7 @@
 "use strict";
-var net = require('net');
-var fs = require('fs');
+Object.defineProperty(exports, "__esModule", { value: true });
+var net = require("net");
+var fs = require("fs");
 var $ = require('./jquery-2.1.4.min.js');
 var columnHeads = [
     'timeInAir',
@@ -92,16 +93,22 @@ var UASSession = (function () {
     UASSession.flying = false;
     UASSession.flightCount = 0;
     UASSession.queue = [];
+    UASSession.connection = {
+        packets: 0,
+        start: 0
+    };
     return UASSession;
 }());
 $('#fileLoc').val(process.cwd() + '\\UASFlightInfo.json');
-var server = net.createServer(function (socket) {
-    socket.on('data', function (data) {
-        data = data.toString();
+net.createServer(function (socket) {
+    UASSession.connection.start = Date.now() / 1000;
+    socket.on('data', function (buff) {
+        UASSession.connection.packets += 1;
+        var data = buff.toString();
         try {
             data = data.toString();
-            data = data.split('\n');
-            var ncs = parseCSV(data[0]);
+            var bestData = data.split('\n');
+            var ncs = parseCSV(bestData[0]);
             if ((ncs.throttle > 12 || ncs.groundspeed > 3) &&
                 ncs.armed &&
                 !UASSession.flying) {
@@ -127,15 +134,19 @@ var server = net.createServer(function (socket) {
             error(e.stack);
         }
         $('#currentcoords').html(currentState.lat.toFixed(6) + ", " + currentState.lng.toFixed(6));
+        $("#connection").html('Connection speed: ' +
+            (UASSession.connection.packets / (Date.now() / 1000 - UASSession.connection.start)).toFixed(0) +
+            ' packet/s');
         if (UASSession.flying) {
             update();
         }
     });
     log('Connection');
 }).listen(54248, '127.0.0.1');
-function map(i, a, b, c, d) {
-    return c + (d - c) * ((i - a) / (b - a));
-}
+var listeningSockets = [];
+net.createServer(function (socket) {
+    listeningSockets.push(socket);
+}).listen(1337, '127.0.0.1');
 var log = function (text) {
     $('#console').append(text + '<br />');
 };
@@ -161,10 +172,7 @@ $('#cameracalci').on('keydown keyup', function () {
         'Depth: ' + cameraValues.depth.toFixed(1) + 'm; ' +
         'Area: ' + (cameraValues.width * cameraValues.depth).toFixed(1) + 'm<sup>2</sup>');
 }
-var mtan = function (v) {
-    return Math.tan(v * (Math.PI / 180));
-};
-var update = function () {
+function update() {
     if (Math.round(Date.now() / 1000) - start - UASSession.voltageTimer >= 20) {
         UASSession.voltageTimer = Math.round(Date.now() / 1000) - start;
         UASSession.volts.push(currentState.batteryVoltage);
@@ -194,8 +202,9 @@ var update = function () {
             'color:yellow' : '')) + '\'>Time required to land: ' +
         Math.floor(timeRequired / 60) + ':' + ('0' + secondsRequired).substr(-2) +
         '</p>');
-};
-var save = function (file) {
+}
+;
+function save(file) {
     file = file || $('#fileLoc').val() || UASSession.fileLocation;
     var sessions = {};
     fs.stat(file, function (err1, _) {
@@ -219,11 +228,13 @@ var save = function (file) {
             throw err1;
         }
         else {
-            fs.readFile(file, function (err, data) {
+            fs.readFile(file, function (err, buff) {
+                var data;
                 if (err) {
                     warn('Cannot read file');
                     data = '';
                 }
+                data = buff.toString();
                 if (data === '') {
                     data = '{}';
                 }
@@ -248,14 +259,16 @@ var save = function (file) {
             });
         }
     });
-};
-var startRecording = function () {
+}
+;
+function startRecording() {
     $('#start').prop('disabled', true);
     $('#stop').prop('disabled', false);
     $('#coordoutput').text('Recording coordinates...');
     UASSession.recordingCoords = true;
-};
-var stopRecording = function () {
+}
+;
+function stopRecording() {
     $('#start').prop('disabled', false);
     $('#stop').prop('disabled', true);
     UASSession.recordingCoords = false;
@@ -275,8 +288,9 @@ var stopRecording = function () {
     UASSession.recordingLats = [];
     UASSession.recordingLongs = [];
     save();
-};
-var average = function (arr) {
+}
+;
+function average(arr) {
     if (arr.length === 0) {
         return 0;
     }
@@ -285,11 +299,13 @@ var average = function (arr) {
         sum += arr[i];
     }
     return sum / arr.length;
-};
-$(window).on('close', save);
-function sendRC(a, b, c) {
-    UASSession.queue.push([a, b, c]);
 }
-function timeSpentInAir() {
-    return Math.round(Date.now() / 1000) - start - UASSession.batteryTimer;
+;
+$(window).on('close', save);
+function sendRC() {
+    var data = [];
+    for (var _i = 0; _i < arguments.length; _i++) {
+        data[_i] = arguments[_i];
+    }
+    listeningSockets.forEach(function (sock) { return sock.write(new Buffer(data)); });
 }
