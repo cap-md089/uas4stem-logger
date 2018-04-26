@@ -250,8 +250,8 @@ function save(file) {
                     'timeInAir': Math.round(Date.now() / 1000) - start - UASSession.batteryTimer,
                     'batteryId': UASSession.batteryId
                 };
-                data = JSON.stringify(data, null, 4);
-                fs.writeFile(file, data, function (err2) {
+                var sessionsString = JSON.stringify(sessions, null, 4);
+                fs.writeFile(file, sessionsString, function (err2) {
                     if (err2) {
                         warn('Could not write data');
                     }
