@@ -462,5 +462,169 @@
         "timeInAir": 231,
         "batteryId": 3,
         "flightNotes": "Onboard battery monitor is dead"
+    },
+    "2018-04-26T22:03": {
+        "coordinates": [],
+        "batteryLog": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        "timeInAir": 331,
+        "batteryId": 1
+    },
+    "2018-04-26T22:09": {
+        "coordinates": [],
+        "batteryLog": [
+            0,
+            0
+        ],
+        "timeInAir": 0,
+        "batteryId": 1
+    },
+    "2018-04-28T18:45": {
+        "coordinates": [
+            {
+                "latitude": 38.36586824671377,
+                "longitude": -76.53598267128012,
+                "time": 395.7149999141693,
+                "description": "Red Y"
+            },
+            {
+                "latitude": 38.36587052593103,
+                "longitude": -76.53596968667505,
+                "time": 414.7149999141693,
+                "description": "Red Y"
+            },
+            {
+                "latitude": 38.366069983038216,
+                "longitude": -76.53606383744075,
+                "time": 504.7149999141693,
+                "description": "Red B"
+            },
+            {
+                "latitude": 38.36606209399829,
+                "longitude": -76.5360594018904,
+                "time": 510.7149999141693,
+                "description": "Red B"
+            }
+        ],
+        "batteryLog": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        "timeInAir": 558.7149999141693,
+        "batteryId": 1
+    },
+    "2018-04-28T18:58": {
+        "coordinates": [
+            {
+                "latitude": 38.36552188758121,
+                "longitude": -76.53730504267054,
+                "time": 133.7149999141693,
+                "description": "Target 1"
+            },
+            {
+                "latitude": 38.36542243477889,
+                "longitude": -76.53660877438644,
+                "time": 215.7149999141693,
+                "description": "Target 2"
+            },
+            {
+                "latitude": 38.36543890000026,
+                "longitude": -76.53658410000101,
+                "time": 226.7149999141693,
+                "description": "Target 2"
+            },
+            {
+                "latitude": 38.36532749999975,
+                "longitude": -76.53575280000054,
+                "time": 299.7149999141693,
+                "description": "Target 2"
+            }
+        ],
+        "batteryLog": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+        ],
+        "timeInAir": 353.7149999141693,
+        "batteryId": 1
+    },
+    "2018-04-29T16:57": {
+        "coordinates": [
+            {
+                "latitude": 0,
+                "longitude": 0,
+                "time": -476,
+                "description": ""
+            },
+            {
+                "latitude": 0,
+                "longitude": 0,
+                "time": -474,
+                "description": ""
+            }
+        ],
+        "batteryLog": [],
+        "timeInAir": -474,
+        "batteryId": 1
     }
 }

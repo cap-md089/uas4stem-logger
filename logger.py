@@ -57,12 +57,18 @@ def receiveCommand (socket) :
             position = data[2] * 1000
             MAV.doCommand(MAV.MAV_CMD.DO_SET_SERVO, servo, position, 0, 0, 0, 0, 0)
 
+        if func == 2 :
+            MAV.doARM(not cs.armed)
+
 try :
     thread.start_new_thread(receiveCommand, tuple([receiving]))
 except Exception as e :
     print "Thread error: {0}".format(e)
 
 while True :
+
+    if Script.GetParam('LAND_SPEED') == 0 :
+        continue
     # uav_loc = mathutils.Matrix.Translation((0,0,25))
     # uav_xrot = mathutils.Matrix.Rotation(math.radians(cs.pitch), 4, 'X')
     # uav_yrot = mathutils.Matrix.Rotation(math.radians(cs.roll), 4, 'Y')

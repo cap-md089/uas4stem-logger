@@ -4,7 +4,9 @@ import * as fs from 'fs';
 // const utm = require('utm-latlng');
 // const utmObj = new utm();
 
-const $ = require('./jquery-2.1.4.min.js');
+import * as $ from './jquery-2.1.4.min';
+
+import UASSession from './UASSession';
 
 interface CurrentState {
 	timeInAir: number;
@@ -87,76 +89,6 @@ var currentState: CurrentState = {
 	timeRequired: 0
 };
 
-class UASSession {
-	public static coords: {
-		latitude: number,
-		longitude: number,
-		time: number,
-		description: string
-	}[] = [];
-	
-	public static recordingLats: number[] = [];
-	public static recordingLongs: number[] = [];
-
-	public static volts: number[] = [];
-
-	public static recordingCoords: boolean = false;
-
-	public static batteryTimer: number = Math.round(
-		Date.now() / 1000
-	) - start;
-	public static voltageTimer: number = Math.round(
-		Date.now() / 1000
-	) - start;
-
-	public static batteryId: number = 1;
-	
-	public static fileLocation: string = process.cwd() + '\\UASFlightInfo.json';
-
-	public static sessionID: string = new Date().toISOString().slice(0, 16);
-
-	public static readonly FRONT_CAMERA_ANGLE: number = 26.064664078303848196356278789571;
-	public static readonly SIDE_CAMERA_ANGLE: number = 46.367543999867315345946421705557;
-
-	public static flying: boolean = false;
-
-	public static flightCount: number = 0;
-
-	public static queue: number[][] = [];
-
-	public static connection: {
-		packets: number,
-		start: number
-	} = {
-		packets: 0,
-		start: 0
-	};
-
-	public static getCameraValues (altitude: number): {
-		width: number;
-		depth: number;
-	} {
-		return {
-			width: 2 * 1.04891304331  * altitude,
-			depth: 2 * 0.489130434783 * altitude
-		};
-	}
-
-	public static reset (): void {
-		this.coords = [];
-		this.recordingLats = [];
-		this.recordingLongs = [];
-		this.volts = [];
-		this.recordingCoords = false;
-		this.batteryTimer = Math.round(Date.now() / 1000) - start;
-		this.batteryId = 1;
-		this.sessionID = new Date().toISOString().slice(0, 16);
-		this.flying = false;
-	}
-}
-
-$('#fileLoc').val(process.cwd() + '\\UASFlightInfo.json');
-
 net.createServer((socket: net.Socket) => {
 	UASSession.connection.start = Date.now() / 1000;
 	socket.on('data', buff => {
@@ -209,6 +141,7 @@ net.createServer((socket: net.Socket) => {
 			(UASSession.connection.packets / (Date.now() / 1000 - UASSession.connection.start)).toFixed(0) +
 			' packet/s'
 		);
+		$('#armed').html(currentState.armed ? 'ARMED' : 'DISARMED')
 
 		if (UASSession.flying) {
 			update();
@@ -308,7 +241,7 @@ function update () {
 		'Area: ' + (cameraValues.width * cameraValues.depth).toFixed(1) + 'm<sup>2</sup>'
 	);
 
-	let timeLeft = 480 - (Math.round(Date.now() / 1000) - start - UASSession.batteryTimer);
+	let timeLeft = UASSession.maxFlightTime - (Math.round(Date.now() / 1000) - start - UASSession.batteryTimer);
 	let timeNow = Math.round(Date.now() / 1000) - start - UASSession.batteryTimer;
 	let timeRequired = currentState.timeRequired;
 	let secondsRequired = Math.floor(timeRequired % 60);
@@ -399,15 +332,13 @@ function save (file?: string) {
 };
 
 function startRecording () {
-	$('#start').prop('disabled', true);
-	$('#stop').prop('disabled', false);
+	$('#startstop').text('Stop recording');
 	$('#coordoutput').text('Recording coordinates...');
 	UASSession.recordingCoords = true;
 };
 
 function stopRecording () {
-	$('#start').prop('disabled', false);
-	$('#stop').prop('disabled', true);
+	$('#startstop').text('Start recording');
 	UASSession.recordingCoords = false;
 	let lat = average(UASSession.recordingLats);
 	let lng = average(UASSession.recordingLongs);
@@ -429,6 +360,14 @@ function stopRecording () {
 	save();
 };
 
+export function toggleRecording () {
+	if (UASSession.recordingCoords) {
+		stopRecording();
+	} else {
+		startRecording();
+	}
+}
+
 function average (arr: number[]): number {
 	if (arr.length === 0) {
 		return 0;
@@ -442,10 +381,34 @@ function average (arr: number[]): number {
 
 $(window).on('close', save);
 
-function sendRC (...data) {
+export function sendRC (...data) {
 	listeningSockets.forEach(sock => sock.write(new Buffer(data)));
 }
 
 // function timeSpentInAir () {
 // 	return Math.round(Date.now() / 1000) - start - UASSession.batteryTimer;
 // }
+
+{
+	let timeLeft = UASSession.maxFlightTime;
+	let timeNow = 0;
+	let timeRequired = 0;
+	let secondsRequired = Math.floor(timeRequired % 60);
+	$('#timeleft').html(
+		'<p style=\'margin:0px\'>Time in air: ' +
+			Math.floor(timeNow / 60) + ':' + ('0' + timeNow % 60).substr(-2) +
+		'</p>' +
+	
+		'<p style=\'margin:0px\'>Time left: ' +
+			Math.floor(timeLeft / 60) + ':' + ('0' + timeLeft % 60).substr(-2) +
+		'</p>' +
+		'<p style=\'margin:0px;' + 
+			(timeRequired > timeLeft ?
+				'color:red' : (timeRequired - 30 > timeLeft ?
+					'color:yellow' : ''
+				)
+			) + '\'>Time required to land: ' +
+			Math.floor(timeRequired / 60) + ':' + ('0' + secondsRequired).substr(-2) +
+		'</p>'
+	);
+}

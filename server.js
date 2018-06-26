@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var net = require("net");
 var fs = require("fs");
 var $ = require('./jquery-2.1.4.min.js');
+var UASSession_1 = require("./UASSession");
 var columnHeads = [
     'timeInAir',
     'lat',
@@ -58,52 +59,10 @@ var currentState = {
     yaw: 0,
     timeRequired: 0
 };
-var UASSession = (function () {
-    function UASSession() {
-    }
-    UASSession.getCameraValues = function (altitude) {
-        return {
-            width: 2 * 1.04891304331 * altitude,
-            depth: 2 * 0.489130434783 * altitude
-        };
-    };
-    UASSession.reset = function () {
-        this.coords = [];
-        this.recordingLats = [];
-        this.recordingLongs = [];
-        this.volts = [];
-        this.recordingCoords = false;
-        this.batteryTimer = Math.round(Date.now() / 1000) - start;
-        this.batteryId = 1;
-        this.sessionID = new Date().toISOString().slice(0, 16);
-        this.flying = false;
-    };
-    UASSession.coords = [];
-    UASSession.recordingLats = [];
-    UASSession.recordingLongs = [];
-    UASSession.volts = [];
-    UASSession.recordingCoords = false;
-    UASSession.batteryTimer = Math.round(Date.now() / 1000) - start;
-    UASSession.voltageTimer = Math.round(Date.now() / 1000) - start;
-    UASSession.batteryId = 1;
-    UASSession.fileLocation = process.cwd() + '\\UASFlightInfo.json';
-    UASSession.sessionID = new Date().toISOString().slice(0, 16);
-    UASSession.FRONT_CAMERA_ANGLE = 26.064664078303848196356278789571;
-    UASSession.SIDE_CAMERA_ANGLE = 46.367543999867315345946421705557;
-    UASSession.flying = false;
-    UASSession.flightCount = 0;
-    UASSession.queue = [];
-    UASSession.connection = {
-        packets: 0,
-        start: 0
-    };
-    return UASSession;
-}());
-$('#fileLoc').val(process.cwd() + '\\UASFlightInfo.json');
 net.createServer(function (socket) {
-    UASSession.connection.start = Date.now() / 1000;
+    UASSession_1.default.connection.start = Date.now() / 1000;
     socket.on('data', function (buff) {
-        UASSession.connection.packets += 1;
+        UASSession_1.default.connection.packets += 1;
         var data = buff.toString();
         try {
             data = data.toString();
@@ -111,21 +70,21 @@ net.createServer(function (socket) {
             var ncs = parseCSV(bestData[0]);
             if ((ncs.throttle > 12 || ncs.groundspeed > 3) &&
                 ncs.armed &&
-                !UASSession.flying) {
-                UASSession.reset();
-                UASSession.flightCount++;
-                UASSession.flying = true;
-                $('#battLog').append('--Flight ' + UASSession.flightCount + '--<br />');
-                log('--Flight ' + UASSession.flightCount + ' started--');
+                !UASSession_1.default.flying) {
+                UASSession_1.default.reset();
+                UASSession_1.default.flightCount++;
+                UASSession_1.default.flying = true;
+                $('#battLog').append('--Flight ' + UASSession_1.default.flightCount + '--<br />');
+                log('--Flight ' + UASSession_1.default.flightCount + ' started--');
             }
             else if ((ncs.throttle < 12 && ncs.groundspeed < 3 || !ncs.armed) &&
-                UASSession.flying) {
-                UASSession.flying = false;
-                UASSession.volts.push(currentState.batteryVoltage);
+                UASSession_1.default.flying) {
+                UASSession_1.default.flying = false;
+                UASSession_1.default.volts.push(currentState.batteryVoltage);
                 $('#battLog').append(currentState.batteryVoltage + '<br />');
                 save($('#fileLoc').val());
-                log('--Flight ' + UASSession.flightCount + ' ended (' +
-                    (Math.round(Date.now() / 1000) - start - UASSession.batteryTimer) +
+                log('--Flight ' + UASSession_1.default.flightCount + ' ended (' +
+                    (Math.round(Date.now() / 1000) - start - UASSession_1.default.batteryTimer) +
                     's)--');
             }
             currentState = ncs;
@@ -135,9 +94,10 @@ net.createServer(function (socket) {
         }
         $('#currentcoords').html(currentState.lat.toFixed(6) + ", " + currentState.lng.toFixed(6));
         $("#connection").html('Connection speed: ' +
-            (UASSession.connection.packets / (Date.now() / 1000 - UASSession.connection.start)).toFixed(0) +
+            (UASSession_1.default.connection.packets / (Date.now() / 1000 - UASSession_1.default.connection.start)).toFixed(0) +
             ' packet/s');
-        if (UASSession.flying) {
+        $('#armed').html(currentState.armed ? 'ARMED' : 'DISARMED');
+        if (UASSession_1.default.flying) {
             update();
         }
     });
@@ -157,37 +117,37 @@ var error = function (text) {
     log('<span style=\'color:red\'>' + text + '</span>');
 };
 $('#batteryIdSel').change(function () {
-    UASSession.batteryId = parseInt($('#batteryIdSel').find(':selected').text(), 10);
-    log('New UAS battery ID ' + UASSession.batteryId);
+    UASSession_1.default.batteryId = parseInt($('#batteryIdSel').find(':selected').text(), 10);
+    log('New UAS battery ID ' + UASSession_1.default.batteryId);
 });
 $('#cameracalci').on('keydown keyup', function () {
-    var cameraValues = UASSession.getCameraValues(parseFloat($('#cameracalci').val()));
+    var cameraValues = UASSession_1.default.getCameraValues(parseFloat($('#cameracalci').val()));
     $('#cameracalco').html('Width: ' + cameraValues.width.toFixed(1) + 'm; ' +
         'Depth: ' + cameraValues.depth.toFixed(1) + 'm; ' +
         'Area: ' + (cameraValues.width * cameraValues.depth).toFixed(1) + 'm<sup>2</sup>');
 });
 {
-    var cameraValues = UASSession.getCameraValues(parseFloat($('#cameracalci').val()));
+    var cameraValues = UASSession_1.default.getCameraValues(parseFloat($('#cameracalci').val()));
     $('#cameracalco').html('Width: ' + cameraValues.width.toFixed(1) + 'm; ' +
         'Depth: ' + cameraValues.depth.toFixed(1) + 'm; ' +
         'Area: ' + (cameraValues.width * cameraValues.depth).toFixed(1) + 'm<sup>2</sup>');
 }
 function update() {
-    if (Math.round(Date.now() / 1000) - start - UASSession.voltageTimer >= 20) {
-        UASSession.voltageTimer = Math.round(Date.now() / 1000) - start;
-        UASSession.volts.push(currentState.batteryVoltage);
+    if (Math.round(Date.now() / 1000) - start - UASSession_1.default.voltageTimer >= 20) {
+        UASSession_1.default.voltageTimer = Math.round(Date.now() / 1000) - start;
+        UASSession_1.default.volts.push(currentState.batteryVoltage);
         $('#battLog').append(currentState.batteryVoltage + '<br />');
     }
-    if (UASSession.recordingCoords) {
-        UASSession.recordingLats.push(currentState.lat);
-        UASSession.recordingLongs.push(currentState.lng);
+    if (UASSession_1.default.recordingCoords) {
+        UASSession_1.default.recordingLats.push(currentState.lat);
+        UASSession_1.default.recordingLongs.push(currentState.lng);
     }
-    var cameraValues = UASSession.getCameraValues(currentState.altitude);
+    var cameraValues = UASSession_1.default.getCameraValues(currentState.altitude);
     $('#cameracalco').html('Width: ' + cameraValues.width.toFixed(1) + 'm; ' +
         'Depth: ' + cameraValues.depth.toFixed(1) + 'm; ' +
         'Area: ' + (cameraValues.width * cameraValues.depth).toFixed(1) + 'm<sup>2</sup>');
-    var timeLeft = 480 - (Math.round(Date.now() / 1000) - start - UASSession.batteryTimer);
-    var timeNow = Math.round(Date.now() / 1000) - start - UASSession.batteryTimer;
+    var timeLeft = UASSession_1.default.maxFlightTime - (Math.round(Date.now() / 1000) - start - UASSession_1.default.batteryTimer);
+    var timeNow = Math.round(Date.now() / 1000) - start - UASSession_1.default.batteryTimer;
     var timeRequired = currentState.timeRequired;
     var secondsRequired = Math.floor(timeRequired % 60);
     $('#timeleft').html('<p style=\'margin:0px\'>Time in air: ' +
@@ -205,17 +165,17 @@ function update() {
 }
 ;
 function save(file) {
-    file = file || $('#fileLoc').val() || UASSession.fileLocation;
+    file = file || $('#fileLoc').val() || UASSession_1.default.fileLocation;
     var sessions = {};
     fs.stat(file, function (err1, _) {
         if (err1 && err1.code === 'ENOENT') {
             log('File not found, creating');
             sessions = {};
-            sessions[UASSession.sessionID] = {
-                coordinates: UASSession.coords,
-                batteryLog: UASSession.volts,
-                timeInAir: Math.round(Date.now() / 1000) - start - UASSession.batteryTimer,
-                batteryId: UASSession.batteryId
+            sessions[UASSession_1.default.sessionID] = {
+                coordinates: UASSession_1.default.coords,
+                batteryLog: UASSession_1.default.volts,
+                timeInAir: Math.round(Date.now() / 1000) - start - UASSession_1.default.batteryTimer,
+                batteryId: UASSession_1.default.batteryId
             };
             var sessionsString = JSON.stringify(sessions, null, 4);
             fs.writeFile(file, sessionsString, function (err2) {
@@ -244,11 +204,11 @@ function save(file) {
                 catch (e) {
                     sessions = {};
                 }
-                sessions[UASSession.sessionID] = {
-                    'coordinates': UASSession.coords,
-                    'batteryLog': UASSession.volts,
-                    'timeInAir': Math.round(Date.now() / 1000) - start - UASSession.batteryTimer,
-                    'batteryId': UASSession.batteryId
+                sessions[UASSession_1.default.sessionID] = {
+                    'coordinates': UASSession_1.default.coords,
+                    'batteryLog': UASSession_1.default.volts,
+                    'timeInAir': Math.round(Date.now() / 1000) - start - UASSession_1.default.batteryTimer,
+                    'batteryId': UASSession_1.default.batteryId
                 };
                 var sessionsString = JSON.stringify(sessions, null, 4);
                 fs.writeFile(file, sessionsString, function (err2) {
@@ -262,34 +222,41 @@ function save(file) {
 }
 ;
 function startRecording() {
-    $('#start').prop('disabled', true);
-    $('#stop').prop('disabled', false);
+    $('#startstop').text('Stop recording');
     $('#coordoutput').text('Recording coordinates...');
-    UASSession.recordingCoords = true;
+    UASSession_1.default.recordingCoords = true;
 }
 ;
 function stopRecording() {
-    $('#start').prop('disabled', false);
-    $('#stop').prop('disabled', true);
-    UASSession.recordingCoords = false;
-    var lat = average(UASSession.recordingLats);
-    var lng = average(UASSession.recordingLongs);
+    $('#startstop').text('Start recording');
+    UASSession_1.default.recordingCoords = false;
+    var lat = average(UASSession_1.default.recordingLats);
+    var lng = average(UASSession_1.default.recordingLongs);
     $('#coordoutput').text(lat.toFixed(9) + ', ' + lng.toFixed(9));
-    UASSession.coords.push({
+    UASSession_1.default.coords.push({
         latitude: lat,
         longitude: lng,
-        time: Math.round(Date.now() / 1000) - start - UASSession.batteryTimer,
+        time: Math.round(Date.now() / 1000) - start - UASSession_1.default.batteryTimer,
         description: $('#coorddescinput').val()
     });
     log('"' + $('#coorddescinput').val() + '": ' +
         lat.toFixed(7) + ', ' + lng.toFixed(7) +
-        ' (' + (Math.round(Date.now() / 1000) - start - UASSession.batteryTimer) + ') ' +
-        '[' + UASSession.recordingLats.length + '/' + UASSession.recordingLongs.length + ']');
-    UASSession.recordingLats = [];
-    UASSession.recordingLongs = [];
+        ' (' + (Math.round(Date.now() / 1000) - start - UASSession_1.default.batteryTimer) + ') ' +
+        '[' + UASSession_1.default.recordingLats.length + '/' + UASSession_1.default.recordingLongs.length + ']');
+    UASSession_1.default.recordingLats = [];
+    UASSession_1.default.recordingLongs = [];
     save();
 }
 ;
+function toggleRecording() {
+    if (UASSession_1.default.recordingCoords) {
+        stopRecording();
+    }
+    else {
+        startRecording();
+    }
+}
+exports.toggleRecording = toggleRecording;
 function average(arr) {
     if (arr.length === 0) {
         return 0;
@@ -308,4 +275,23 @@ function sendRC() {
         data[_i] = arguments[_i];
     }
     listeningSockets.forEach(function (sock) { return sock.write(new Buffer(data)); });
+}
+exports.sendRC = sendRC;
+{
+    var timeLeft = UASSession_1.default.maxFlightTime;
+    var timeNow = 0;
+    var timeRequired = 0;
+    var secondsRequired = Math.floor(timeRequired % 60);
+    $('#timeleft').html('<p style=\'margin:0px\'>Time in air: ' +
+        Math.floor(timeNow / 60) + ':' + ('0' + timeNow % 60).substr(-2) +
+        '</p>' +
+        '<p style=\'margin:0px\'>Time left: ' +
+        Math.floor(timeLeft / 60) + ':' + ('0' + timeLeft % 60).substr(-2) +
+        '</p>' +
+        '<p style=\'margin:0px;' +
+        (timeRequired > timeLeft ?
+            'color:red' : (timeRequired - 30 > timeLeft ?
+            'color:yellow' : '')) + '\'>Time required to land: ' +
+        Math.floor(timeRequired / 60) + ':' + ('0' + secondsRequired).substr(-2) +
+        '</p>');
 }
