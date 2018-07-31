@@ -1,0 +1,2 @@
+# MAV.doCommand(MAV.MAV_CMD.WAYPOINT, 0, 0, 0, 0, 38.2992794, -76.5858454, 15)
+print dir(MAV.MAV_CMD)
