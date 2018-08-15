@@ -1,4 +1,6 @@
-const start = Date.now () / 1000;
+const start = Math.round(Date.now () / 1000);
+
+import * as jquery from './jquery-2.1.4.min.js';
 
 export default class UASSession {
 	public static coords: {
@@ -16,6 +18,9 @@ export default class UASSession {
 	public static recordingCoords: boolean = false;
 
 	public static batteryTimer: number = Math.round(
+		Date.now() / 1000
+	) - start;
+	public static flightTimer: number = Math.round(
 		Date.now() / 1000
 	) - start;
 	public static voltageTimer: number = Math.round(
@@ -37,12 +42,15 @@ export default class UASSession {
 
 	public static queue: number[][] = [];
 
+	public static continuingFlight: boolean = false;
+	public static previousFlightTime: number = 0;
+
 	public static connection: {
 		packets: number,
-		start: number
+		packetsPerSecond: number
 	} = {
 		packets: 0,
-		start: 0
+		packetsPerSecond: 0
 	};
 
 	public static maxFlightTime: number = 480;
@@ -63,9 +71,21 @@ export default class UASSession {
 		this.recordingLongs = [];
 		this.volts = [];
 		this.recordingCoords = false;
-		this.batteryTimer = Math.round(Date.now() / 1000) - start;
+		this.previousFlightTime = Math.round(Date.now() / 1000 - start - this.batteryTimer);
 		this.batteryId = 1;
 		this.sessionID = new Date().toISOString().slice(0, 16);
 		this.flying = false;
+	}
+
+	public static prepare(): void {
+		this.batteryTimer = Math.round(Date.now() / 1000 - start);
+		this.flightTimer = Math.round(Date.now() / 1000 - start);
+		if (this.continuingFlight) {
+			this.batteryTimer -= this.previousFlightTime;
+			this.continuingFlight = false;
+			this.previousFlightTime = 0;
+
+			jquery('#continueFlightStatus').text('NO');
+		}
 	}
 }

@@ -1,5 +1,6 @@
 import * as net from 'net';
 import * as fs from 'fs';
+import { createSocket } from 'dgram';
 
 // const utm = require('utm-latlng');
 // const utmObj = new utm();
@@ -50,7 +51,7 @@ const columnHeads: string[] = [
 	'timeRequired'
 ];
 
-function parseCSV (csv: string): CurrentState {
+function parseCSV(csv: string): CurrentState {
 	let results = csv.split(',');
 	let result = {} as CurrentState;
 	for (let i in results) {
@@ -58,7 +59,7 @@ function parseCSV (csv: string): CurrentState {
 			result[columnHeads[i]] = results[i];
 			if (i === '3') {
 				// tslint:disable-next-line:no-any
-				result.armed = (result.armed as any as string) === 'true';
+				result.armed = ((result.armed as any) as string) === 'true';
 			} else {
 				result[columnHeads[i]] = parseFloat(results[i]);
 			}
@@ -69,7 +70,7 @@ function parseCSV (csv: string): CurrentState {
 
 const start = Math.round(Date.now() / 1000);
 
-var currentState: CurrentState = {
+let currentState: CurrentState = {
 	timeInAir: 0,
 	lat: 0,
 	lng: 0,
@@ -89,66 +90,87 @@ var currentState: CurrentState = {
 	timeRequired: 0
 };
 
-net.createServer((socket: net.Socket) => {
-	UASSession.connection.start = Date.now() / 1000;
-	socket.on('data', buff => {
-		UASSession.connection.packets += 1;
-		let data = buff.toString();
-		try {
-			data = data.toString();
-			let bestData = data.split('\n');
-			let ncs: CurrentState = parseCSV(bestData[0]);
-			if (
-				(ncs.throttle > 12 || ncs.groundspeed > 3) &&
-				ncs.armed &&
-				!UASSession.flying
-			) {
-				UASSession.reset();
-				UASSession.flightCount++;
-				UASSession.flying = true;
-				$('#battLog').append('--Flight ' + UASSession.flightCount + '--<br />');
-				log ('--Flight ' + UASSession.flightCount + ' started--');
-			} else if (
-				(ncs.throttle < 12 && ncs.groundspeed < 3 || !ncs.armed) &&
-				UASSession.flying
-			) {
-				UASSession.flying = false;
-				UASSession.volts.push(currentState.batteryVoltage);
-				$('#battLog').append(currentState.batteryVoltage + '<br />');
-				save($('#fileLoc').val() as string);
-				log (
-					'--Flight ' + UASSession.flightCount + ' ended (' +
-					(Math.round(Date.now() / 1000) - start - UASSession.batteryTimer) +
-					's)--'
-				);
-			}
+let packetCount = 0;
 
-			currentState = ncs;
-			
-			/*if (queue.length > 0) {
+const checkTime = 10;
+
+setInterval(() => {
+	let npc = packetCount;
+	UASSession.connection.packets += npc;
+	UASSession.connection.packetsPerSecond = npc * (1000 / checkTime);
+	packetCount = 0;
+}, checkTime);
+
+const server = createSocket('udp4');
+
+server.on('message', buff => {
+	packetCount += 1;
+	let data = buff.toString();
+	try {
+		data = data.toString();
+		let bestData = data;
+		let ncs: CurrentState = parseCSV(bestData);
+		if (
+			(ncs.throttle > 12 || ncs.groundspeed > 3) &&
+			ncs.armed &&
+			!UASSession.flying
+		) {
+			UASSession.prepare();
+			UASSession.flightCount++;
+			UASSession.flying = true;
+			$('#battLog').append(
+				'--Flight ' + UASSession.flightCount + '--<br />'
+			);
+			log('--Flight ' + UASSession.flightCount + ' started--');
+		} else if (
+			((ncs.throttle < 12 && ncs.groundspeed < 3) || !ncs.armed) &&
+			UASSession.flying
+		) {
+			UASSession.reset();
+			UASSession.volts.push(currentState.batteryVoltage);
+			$('#battLog').append(currentState.batteryVoltage + '<br />');
+			save($('#fileLoc').val() as string);
+			log(
+				'--Flight ' +
+					UASSession.flightCount +
+					' ended (' +
+					(Math.round(Date.now() / 1000) -
+						start -
+						UASSession.flightTimer) +
+					's, ' +
+					(Math.round(Date.now() / 1000) -
+						start -
+						UASSession.batteryTimer) +
+					's total)--'
+			);
+		}
+
+		currentState = ncs;
+
+		/*if (queue.length > 0) {
 				socket.write(JSON.stringify(queue[0]));
 				queue.splice(0);
 			} else {
 				socket.write('');
 			}*/
-		} catch (e) {
-			error(e.stack);
-		}
-		
-		$('#currentcoords').html(`${currentState.lat.toFixed(6)}, ${currentState.lng.toFixed(6)}`);
-		$("#connection").html(
-			'Connection speed: ' +
-			(UASSession.connection.packets / (Date.now() / 1000 - UASSession.connection.start)).toFixed(0) +
-			' packet/s'
-		);
-		$('#armed').html(currentState.armed ? 'ARMED' : 'DISARMED')
+	} catch (e) {
+		error(e.stack);
+	}
 
-		if (UASSession.flying) {
-			update();
-		}
-	});
-	log('Connection');
-}).listen(54248, '127.0.0.1');
+	$('#currentcoords').html(
+		`${currentState.lat.toFixed(6)}, ${currentState.lng.toFixed(6)}`
+	);
+	$('#connection').html(
+		`Connection speed: ${('000' + UASSession.connection.packetsPerSecond.toString()).substr(-3)} packet/s`
+	);
+	$('#armed').html(currentState.armed ? 'ARMED' : 'DISARMED');
+
+	if (UASSession.flying) {
+		update();
+	}
+});
+
+server.bind(54248, '127.0.0.1');
 
 let listeningSockets: net.Socket[] = [];
 net.createServer((socket: net.Socket) => {
@@ -159,49 +181,59 @@ net.createServer((socket: net.Socket) => {
 // 	return c + (d - c) * ((i - a) / (b - a));
 // }
 
-var log = function (text: string) {
-	$('#console').append(text + '<br />');    
+var log = function(text: string) {
+	$('#console').append(text + '<br />');
 };
 
-var warn = function (text: string) {
-	log ('<span style=\'color:#880\'>' + text + '</span>');
+var warn = function(text: string) {
+	log('<span style="color:#880">' + text + '</span>');
 };
 
-var error = function (text: string) {
-	log ('<span style=\'color:red\'>' + text + '</span>');
+var error = function(text: string) {
+	log('<span style="color:red">' + text + '</span>');
 };
 
-$('#batteryIdSel').change(function () {
-	UASSession.batteryId = parseInt($('#batteryIdSel').find(':selected').text(), 10);
+$('#batteryIdSel').change(function() {
+	UASSession.batteryId = parseInt(
+		$('#batteryIdSel')
+			.find(':selected')
+			.text(),
+		10
+	);
 	log('New UAS battery ID ' + UASSession.batteryId);
 });
 
-$('#cameracalci').on('keydown keyup', function () {
-	
+$('#cameracalci').on('keydown keyup', function() {
 	let cameraValues = UASSession.getCameraValues(
-		parseFloat(
-			$('#cameracalci').val()
-		)
+		parseFloat($('#cameracalci').val())
 	);
 
 	$('#cameracalco').html(
-		'Width: ' + cameraValues.width.toFixed(1) + 'm; ' +
-		'Depth: ' + cameraValues.depth.toFixed(1) + 'm; ' +
-		'Area: ' + (cameraValues.width * cameraValues.depth).toFixed(1) + 'm<sup>2</sup>'
+		'Width: ' +
+			cameraValues.width.toFixed(1) +
+			'm; ' +
+			'Depth: ' +
+			cameraValues.depth.toFixed(1) +
+			'm; ' +
+			'Area: ' +
+			(cameraValues.width * cameraValues.depth).toFixed(1) +
+			'm<sup>2</sup>'
 	);
 });
 
 {
-	let cameraValues = UASSession.getCameraValues(
-		parseFloat(
-			$('#cameracalci').val()
-		)
-	);	
+	let cameraValues = UASSession.getCameraValues(25);
 
 	$('#cameracalco').html(
-		'Width: ' + cameraValues.width.toFixed(1) + 'm; ' +
-		'Depth: ' + cameraValues.depth.toFixed(1) + 'm; ' +
-		'Area: ' + (cameraValues.width * cameraValues.depth).toFixed(1) + 'm<sup>2</sup>'
+		'Width: ' +
+			cameraValues.width.toFixed(1) +
+			'm; ' +
+			'Depth: ' +
+			cameraValues.depth.toFixed(1) +
+			'm; ' +
+			'Area: ' +
+			(cameraValues.width * cameraValues.depth).toFixed(1) +
+			'm<sup>2</sup>'
 	);
 }
 
@@ -209,7 +241,7 @@ $('#cameracalci').on('keydown keyup', function () {
 // 	return Math.tan(v * (Math.PI / 180));
 // };
 
-function update () {
+function update() {
 	if (Math.round(Date.now() / 1000) - start - UASSession.voltageTimer >= 20) {
 		UASSession.voltageTimer = Math.round(Date.now() / 1000) - start;
 		UASSession.volts.push(currentState.batteryVoltage);
@@ -228,7 +260,7 @@ function update () {
 
 		// UAS.rlats.push(coordinates.lat);
 		// UAS.rlongs.push(coordinates.lang);
-		
+
 		UASSession.recordingLats.push(currentState.lat);
 		UASSession.recordingLongs.push(currentState.lng);
 	}
@@ -236,59 +268,77 @@ function update () {
 	let cameraValues = UASSession.getCameraValues(currentState.altitude);
 
 	$('#cameracalco').html(
-		'Width: ' + cameraValues.width.toFixed(1) + 'm; ' +
-		'Depth: ' + cameraValues.depth.toFixed(1) + 'm; ' +
-		'Area: ' + (cameraValues.width * cameraValues.depth).toFixed(1) + 'm<sup>2</sup>'
+		'Width: ' +
+			cameraValues.width.toFixed(1) +
+			'm; ' +
+			'Depth: ' +
+			cameraValues.depth.toFixed(1) +
+			'm; ' +
+			'Area: ' +
+			(cameraValues.width * cameraValues.depth).toFixed(1) +
+			'm<sup>2</sup>'
 	);
 
-	let timeLeft = UASSession.maxFlightTime - (Math.round(Date.now() / 1000) - start - UASSession.batteryTimer);
-	let timeNow = Math.round(Date.now() / 1000) - start - UASSession.batteryTimer;
-	let timeRequired = currentState.timeRequired;
+	let timeLeft =
+		UASSession.maxFlightTime -
+		Math.round(Date.now() / 1000 - start - UASSession.batteryTimer);
+	let timeNow = Math.round(
+		Date.now() / 1000 - start - UASSession.batteryTimer
+	);
+	let timeRequired = Math.round(currentState.timeRequired);
 	let secondsRequired = Math.floor(timeRequired % 60);
 	$('#timeleft').html(
-		'<p style=\'margin:0px\'>Time in air: ' +
-			Math.floor(timeNow / 60) + ':' + ('0' + timeNow % 60).substr(-2) +
-		'</p>' +
-	
-		'<p style=\'margin:0px\'>Time left: ' +
-			Math.floor(timeLeft / 60) + ':' + ('0' + timeLeft % 60).substr(-2) +
-		'</p>' +
-		
-		'<p style=\'margin:0px;' + 
-			(timeRequired > timeLeft ?
-				'color:red' : (timeRequired - 30 > timeLeft ?
-					'color:yellow' : ''
-				)
-			) + '\'>Time required to land: ' +
-			Math.floor(timeRequired / 60) + ':' + ('0' + secondsRequired).substr(-2) +
-		'</p>'
+		'<p style="margin:0px">Time in air: ' +
+			Math.floor(timeNow / 60) +
+			':' +
+			('0' + (timeNow % 60)).substr(-2) +
+			'</p>' +
+			'<p style="margin:0px">Time left: ' +
+			Math.floor(timeLeft / 60) +
+			':' +
+			('0' + (timeLeft % 60)).substr(-2) +
+			'</p>' +
+			'<p style="margin:0px;' +
+			(timeRequired > timeLeft
+				? 'color:red'
+				: timeRequired + 30 > timeLeft
+					? 'color:#880'
+					: '') +
+			'">Time required to land: ' +
+			Math.floor(timeRequired / 60) +
+			':' +
+			('0' + secondsRequired).substr(-2) +
+			'</p>'
 	);
-};
+}
 
-function save (file?: string) {
+function save(file?: string) {
 	file = file || $('#fileLoc').val() || UASSession.fileLocation;
 	let sessions: {
 		[key: string]: {
 			coordinates: {
-				latitude: number,
-				longitude: number,
-				time: number,
-				description: string
-			}[],
-			batteryLog: number[],
-			timeInAir: number,
-			batteryId: number
-		}
+				latitude: number;
+				longitude: number;
+				time: number;
+				description: string;
+			}[];
+			batteryLog: number[];
+			timeInAir: number;
+			batteryId: number;
+		};
 	} = {};
 	fs.stat(file, (err1, _) => {
 		if (err1 && err1.code === 'ENOENT') {
 			log('File not found, creating');
 			sessions = {};
 			sessions[UASSession.sessionID] = {
-				coordinates : UASSession.coords,
-				batteryLog : UASSession.volts,
-				timeInAir : Math.round(Date.now() / 1000) - start - UASSession.batteryTimer,
-				batteryId : UASSession.batteryId
+				coordinates: UASSession.coords,
+				batteryLog: UASSession.volts,
+				timeInAir:
+					Math.round(Date.now() / 1000) -
+					start -
+					UASSession.flightTimer,
+				batteryId: UASSession.batteryId
 			};
 			let sessionsString = JSON.stringify(sessions, null, 4);
 			fs.writeFile(file, sessionsString, (err2: Error) => {
@@ -298,7 +348,7 @@ function save (file?: string) {
 			});
 		} else if (err1) {
 			throw err1;
-		} else  {
+		} else {
 			fs.readFile(file, (err, buff) => {
 				let data: string;
 				if (err) {
@@ -315,10 +365,13 @@ function save (file?: string) {
 					sessions = {};
 				}
 				sessions[UASSession.sessionID] = {
-					'coordinates' : UASSession.coords,
-					'batteryLog' : UASSession.volts,
-					'timeInAir' : Math.round(Date.now() / 1000) - start - UASSession.batteryTimer,
-					'batteryId' : UASSession.batteryId
+					coordinates: UASSession.coords,
+					batteryLog: UASSession.volts,
+					timeInAir:
+						Math.round(Date.now() / 1000) -
+						start -
+						UASSession.batteryTimer,
+					batteryId: UASSession.batteryId
 				};
 				let sessionsString = JSON.stringify(sessions, null, 4);
 				fs.writeFile(file, sessionsString, (err2: Error) => {
@@ -329,38 +382,48 @@ function save (file?: string) {
 			});
 		}
 	});
-};
+}
 
-function startRecording () {
+function startRecording() {
 	$('#startstop').text('Stop recording');
 	$('#coordoutput').text('Recording coordinates...');
 	UASSession.recordingCoords = true;
-};
+}
 
-function stopRecording () {
+function stopRecording() {
 	$('#startstop').text('Start recording');
 	UASSession.recordingCoords = false;
 	let lat = average(UASSession.recordingLats);
 	let lng = average(UASSession.recordingLongs);
 	$('#coordoutput').text(lat.toFixed(9) + ', ' + lng.toFixed(9));
 	UASSession.coords.push({
-		latitude : lat,
-		longitude : lng,
-		time: Math.round(Date.now() / 1000) - start - UASSession.batteryTimer,
-		description : $('#coorddescinput').val()
+		latitude: lat,
+		longitude: lng,
+		time: Math.round(Date.now() / 1000) - start - UASSession.flightTimer,
+		description: $('#coorddescinput').val()
 	});
 	log(
-		'"' + $('#coorddescinput').val() + '": ' + 
-		lat.toFixed(7) + ', ' + lng.toFixed(7) +
-		' (' + (Math.round(Date.now() / 1000) - start - UASSession.batteryTimer) + ') ' +
-		'[' + UASSession.recordingLats.length + '/' + UASSession.recordingLongs.length + ']'
+		'"' +
+			$('#coorddescinput').val() +
+			'": ' +
+			lat.toFixed(7) +
+			', ' +
+			lng.toFixed(7) +
+			' (' +
+			(Math.round(Date.now() / 1000) - start - UASSession.flightTimer) +
+			') ' +
+			'[' +
+			UASSession.recordingLats.length +
+			'/' +
+			UASSession.recordingLongs.length +
+			']'
 	);
 	UASSession.recordingLats = [];
 	UASSession.recordingLongs = [];
 	save();
-};
+}
 
-export function toggleRecording () {
+export function toggleRecording() {
 	if (UASSession.recordingCoords) {
 		stopRecording();
 	} else {
@@ -368,7 +431,7 @@ export function toggleRecording () {
 	}
 }
 
-function average (arr: number[]): number {
+function average(arr: number[]): number {
 	if (arr.length === 0) {
 		return 0;
 	}
@@ -377,11 +440,11 @@ function average (arr: number[]): number {
 		sum += arr[i];
 	}
 	return sum / arr.length;
-};
+}
 
 $(window).on('close', save);
 
-export function sendRC (...data) {
+export function sendRC(...data: number[]) {
 	listeningSockets.forEach(sock => sock.write(new Buffer(data)));
 }
 
@@ -395,20 +458,31 @@ export function sendRC (...data) {
 	let timeRequired = 0;
 	let secondsRequired = Math.floor(timeRequired % 60);
 	$('#timeleft').html(
-		'<p style=\'margin:0px\'>Time in air: ' +
-			Math.floor(timeNow / 60) + ':' + ('0' + timeNow % 60).substr(-2) +
-		'</p>' +
-	
-		'<p style=\'margin:0px\'>Time left: ' +
-			Math.floor(timeLeft / 60) + ':' + ('0' + timeLeft % 60).substr(-2) +
-		'</p>' +
-		'<p style=\'margin:0px;' + 
-			(timeRequired > timeLeft ?
-				'color:red' : (timeRequired - 30 > timeLeft ?
-					'color:yellow' : ''
-				)
-			) + '\'>Time required to land: ' +
-			Math.floor(timeRequired / 60) + ':' + ('0' + secondsRequired).substr(-2) +
-		'</p>'
+		'<p style="margin:0px">Time in air: ' +
+			Math.floor(timeNow / 60) +
+			':' +
+			('0' + (timeNow % 60)).substr(-2) +
+			'</p>' +
+			'<p style="margin:0px">Time left: ' +
+			Math.floor(timeLeft / 60) +
+			':' +
+			('0' + (timeLeft % 60)).substr(-2) +
+			'</p>' +
+			'<p style="margin:0px;' +
+			(timeRequired > timeLeft
+				? 'color:red'
+				: timeRequired - 30 > timeLeft
+					? 'color:yellow'
+					: '') +
+			'">Time required to land: ' +
+			Math.floor(timeRequired / 60) +
+			':' +
+			('0' + secondsRequired).substr(-2) +
+			'</p>'
 	);
 }
+
+$('#continueFlightButton').on('click', () => {
+	$('#continueFlightStatus').text('YES');
+	UASSession.continuingFlight = true;
+});

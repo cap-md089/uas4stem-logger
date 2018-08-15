@@ -645,5 +645,78 @@
         "batteryLog": [],
         "timeInAir": -226,
         "batteryId": 1
+    },
+    "2018-08-15T14:20": {
+        "coordinates": [],
+        "batteryLog": [
+            0,
+            0
+        ],
+        "timeInAir": 17,
+        "batteryId": 1
+    },
+    "2018-08-15T14:34": {
+        "coordinates": [],
+        "batteryLog": [
+            0
+        ],
+        "timeInAir": 2,
+        "batteryId": 1
+    },
+    "2018-08-15T14:36": {
+        "coordinates": [],
+        "batteryLog": [
+            0
+        ],
+        "timeInAir": 4,
+        "batteryId": 1
+    },
+    "2018-08-15T14:37": {
+        "coordinates": [],
+        "batteryLog": [
+            0
+        ],
+        "timeInAir": 1,
+        "batteryId": 1
+    },
+    "2018-08-15T14:44": {
+        "coordinates": [],
+        "batteryLog": [
+            0
+        ],
+        "timeInAir": 8,
+        "batteryId": 1
+    },
+    "2018-08-15T14:45": {
+        "coordinates": [],
+        "batteryLog": [
+            0
+        ],
+        "timeInAir": 23,
+        "batteryId": 1
+    },
+    "2018-08-15T14:56": {
+        "coordinates": [],
+        "batteryLog": [
+            0
+        ],
+        "timeInAir": 1,
+        "batteryId": 1
+    },
+    "2018-08-15T14:58": {
+        "coordinates": [],
+        "batteryLog": [
+            0
+        ],
+        "timeInAir": 15,
+        "batteryId": 1
+    },
+    "2018-08-15T14:59": {
+        "coordinates": [],
+        "batteryLog": [
+            0
+        ],
+        "timeInAir": 12,
+        "batteryId": 1
     }
 }

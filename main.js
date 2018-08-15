@@ -21,8 +21,6 @@ function createWindow () {
         "slashes" : true
     }));
 
-    mainWindow;
-
 //    mainWindow.webContents.openDevTools();
 
     mainWindow.on('closed', function () {

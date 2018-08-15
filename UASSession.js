@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var start = Date.now() / 1000;
+var start = Math.round(Date.now() / 1000);
+var jquery = require("./jquery-2.1.4.min.js");
 var UASSession = (function () {
     function UASSession() {
     }
@@ -16,10 +17,20 @@ var UASSession = (function () {
         this.recordingLongs = [];
         this.volts = [];
         this.recordingCoords = false;
-        this.batteryTimer = Math.round(Date.now() / 1000) - start;
+        this.previousFlightTime = Math.round(Date.now() / 1000 - start - this.batteryTimer);
         this.batteryId = 1;
         this.sessionID = new Date().toISOString().slice(0, 16);
         this.flying = false;
+    };
+    UASSession.prepare = function () {
+        this.batteryTimer = Math.round(Date.now() / 1000 - start);
+        this.flightTimer = Math.round(Date.now() / 1000 - start);
+        if (this.continuingFlight) {
+            this.batteryTimer -= this.previousFlightTime;
+            this.continuingFlight = false;
+            this.previousFlightTime = 0;
+            jquery('#continueFlightStatus').text('NO');
+        }
     };
     UASSession.coords = [];
     UASSession.recordingLats = [];
@@ -27,6 +38,7 @@ var UASSession = (function () {
     UASSession.volts = [];
     UASSession.recordingCoords = false;
     UASSession.batteryTimer = Math.round(Date.now() / 1000) - start;
+    UASSession.flightTimer = Math.round(Date.now() / 1000) - start;
     UASSession.voltageTimer = Math.round(Date.now() / 1000) - start;
     UASSession.batteryId = 1;
     UASSession.fileLocation = process.cwd() + '\\UASFlightInfo.json';
@@ -36,11 +48,14 @@ var UASSession = (function () {
     UASSession.flying = false;
     UASSession.flightCount = 0;
     UASSession.queue = [];
+    UASSession.continuingFlight = false;
+    UASSession.previousFlightTime = 0;
     UASSession.connection = {
         packets: 0,
-        start: 0
+        packetsPerSecond: 0
     };
     UASSession.maxFlightTime = 480;
     return UASSession;
 }());
 exports.default = UASSession;
+//# sourceMappingURL=UASSession.js.map

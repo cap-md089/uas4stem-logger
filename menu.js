@@ -10,3 +10,4 @@ $('#menu a').on('click', function (e) {
     $("#" + targetID).css('display', 'block');
     return false;
 });
+//# sourceMappingURL=menu.js.map

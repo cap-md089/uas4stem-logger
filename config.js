@@ -27,3 +27,4 @@ function saveConfig() {
     });
 }
 $(window).on('close', saveConfig);
+//# sourceMappingURL=config.js.map
